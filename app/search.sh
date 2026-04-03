@@ -10,4 +10,4 @@ if [ -z "$QUERY" ]; then
     exit 1
 fi
 
-spark-submit /app/query.py "$QUERY"
+spark-submit --conf "spark.ui.showConsoleProgress=false" /app/query.py "$QUERY" 2>/dev/null
