@@ -1,15 +1,23 @@
 #!/bin/bash
+set -e
 
-service ssh restart || true
+source /app/.venv/bin/activate
 
-bash /app/start-services.sh || true
+echo "=== HDFS index folders ==="
+hdfs dfs -ls /indexer
 
-cd /app
+echo ""
+echo "=== Corpus stats ==="
+hdfs dfs -cat /indexer/stats/part-*
 
-python3 -m venv .venv
-source .venv/bin/activate
+echo ""
+echo "=== Query: history ==="
+/app/search.sh history
 
-pip install -r requirements.txt
-pip install venv-pack
+echo ""
+echo "=== Query: history of time ==="
+/app/search.sh "history of time"
 
-tail -f /dev/null
+echo ""
+echo "=== Query: christmas ==="
+/app/search.sh christmas
