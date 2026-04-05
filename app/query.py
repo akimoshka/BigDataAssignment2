@@ -61,8 +61,13 @@ def bm25_score(tf, df, dl, N, avgdl, k1=K1, b=B):
 
 def main():
     query = " ".join(sys.argv[1:]).strip()
+
+    if not query:
+        query = sys.stdin.read().strip()
+
     if not query:
         print("Usage: spark-submit /app/query.py <query text>")
+        print("Or provide query text through stdin.")
         sys.exit(1)
 
     terms = tokenize(query)

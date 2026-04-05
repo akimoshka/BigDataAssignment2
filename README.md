@@ -1,135 +1,106 @@
+# Assignment 2: Simple Search Engine using Hadoop MapReduce
 
-# Simple Search Engine (Hadoop + Spark + Cassandra)
+This repository contains a simple search engine built with Hadoop MapReduce, Spark, and Cassandra. The system indexes a text corpus, stores the index in Cassandra, and supports ranked retrieval using BM25.
 
-This project implements a simple search engine using distributed technologies.  
-It builds an inverted index from a text dataset using Hadoop MapReduce, processes it with Spark, stores it in Cassandra, and supports ranked search queries using BM25.
+## Project idea
 
----
+The goal of this assignment was to implement the main parts of a very simple search engine in a distributed environment. The pipeline includes data preparation, index creation, storage, and ranked query answering.
 
-## Project Overview
+The system works in the following order:
 
-The system follows a full big data pipeline:
+1. prepare text documents from the parquet dataset
+2. upload them to HDFS
+3. build an inverted index with Hadoop MapReduce
+4. compute vocabulary and corpus statistics with Spark
+5. store the index in Cassandra
+6. answer user queries with BM25
 
-1. **Data Preparation**
-   - Text documents are merged and uploaded to HDFS
+## Technologies used
 
-2. **Indexing (Hadoop MapReduce)**
-   - Builds inverted index (term → documents)
-   - Computes term frequencies (TF)
+- Hadoop HDFS
+- Hadoop Streaming
+- Spark
+- Cassandra
+- Python
 
-3. **Post-processing (Spark)**
-   - Splits index into components
-   - Computes document frequency (DF)
-   - Calculates corpus statistics (N, AVGDL)
+## Repository structure
 
-4. **Storage (Cassandra)**
-   - Stores documents, vocabulary, postings, and stats
-
-5. **Search (BM25 Ranking)**
-   - Processes user queries
-   - Retrieves and ranks top documents
-
----
-
-## Project Structure
-
-```
-
+```text
 /app
-│
 ├── mapreduce/
 │   ├── mapper1.py
 │   └── reducer1.py
-│
 ├── spark/
 │   ├── split_index.py
 │   ├── build_vocab.py
 │   └── build_stats.py
-│
 ├── scripts/
 │   └── load_index.py
-│
+├── prepare_data.py
+├── prepare_input.py
 ├── create_index.sh
 ├── store_index.sh
 ├── index.sh
 ├── query.py
 ├── search.sh
 ├── app.sh
+├── start-services.sh
 ├── requirements.txt
 └── report.pdf
+````
 
-```
+## Dataset
 
----
+The dataset is based on one parquet file from the Wikipedia dataset.
 
-## Requirements
+Each generated document follows this naming format:
 
-- Hadoop (HDFS + Streaming)
-- Spark
-- Cassandra
-- Python 3
-
-Python dependencies:
-
-```
-
-pip install -r requirements.txt
-
-```
-
----
-
-## Dataset Format
-
-Each document must be in this format:
-
-```
-
+```text
 <doc_id>_<doc_title>.txt
-
 ```
 
 Example:
 
-```
-
+```text
 10078432_A_Case_for_the_Court.txt
-
 ```
 
-Documents are uploaded to:
+## How to run
 
+### 1. Start containers
+
+From the project root:
+
+```bash
+docker compose up -d
 ```
 
-/input/data
+### 2. Enter the master container
 
-````
+```bash
+docker exec -it cluster-master bash
+source .venv/bin/activate
+```
 
----
+### 3. Check services
 
-## How to Run
+```bash
+/app/start-services.sh
+```
 
-### 1. Build the Index
+### 4. Run the full indexing pipeline
 
 ```bash
 /app/index.sh
-````
-
-This runs the full pipeline:
-
-* Hadoop MapReduce indexing
-* Spark processing
-* Cassandra storage
-
----
-
-### 2. Run Search Queries
-
-```bash
-/app/search.sh <query>
 ```
 
-Examples:
+This script:
+
+* creates the HDFS index
+* computes vocabulary and statistics
+* stores everything in Cassandra
+
+### 5. Run search queries
 
 ```bash
 /app/search.sh history
@@ -137,52 +108,44 @@ Examples:
 /app/search.sh christmas
 ```
 
----
-
-### 3. Demo Script
-
-You can also run:
+### 6. Demo run
 
 ```bash
 /app/app.sh
 ```
 
-This will:
+This script prints:
 
-* show HDFS index structure
-* display corpus stats
-* run example queries
+* HDFS index folders
+* corpus statistics
+* sample query results
 
----
+## Index structure
 
-## Example Output
+The final HDFS index is stored in:
 
-```
-Query: history of time
+* `/indexer/docs`
+* `/indexer/postings`
+* `/indexer/vocab`
+* `/indexer/stats`
 
-1   A_Briefer_History_of_Time
-2   A_Brief_History_of_Time_(film)
-3   A_Briefer_History_of_Time_(Schulman_book)
-...
-```
+The Cassandra tables are:
 
-The results show relevant documents ranked using BM25.
+* `documents`
+* `vocabulary`
+* `postings`
+* `corpus_stats`
 
----
+## Query processing
 
-## Design Choices
+The query engine uses BM25 ranking.
+For each query term, it retrieves postings, document frequency, and document length, then computes scores and returns the top 10 matching documents.
 
-* **Simple tokenization** using regex (keeps words + numbers)
-* **BM25 ranking** for better relevance
-* **Separated storage** (documents, postings, vocab, stats)
-* **Cassandra** for fast lookup instead of heavy joins
+The script `query.py` supports:
 
-The system is intentionally simple but modular.
-
----
+* query text as command-line arguments
+* query text from standard input
 
 ## Notes
 
-* The tokenizer is basic and may include some noisy tokens (numbers), but it keeps the system lightweight.
-* The focus of this project is on distributed processing rather than perfect NLP.
-
+The tokenizer is intentionally simple. It lowercases text and extracts alphanumeric tokens with regex. This means some numeric tokens remain in the vocabulary, which adds a bit of noise, but keeps the pipeline simple and transparent.
